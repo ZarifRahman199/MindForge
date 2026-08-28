@@ -1,345 +1,53 @@
 import React, { useEffect, useState } from 'react';
-import {
-  SafeAreaView,
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  ScrollView,
-} from 'react-native';
+import { SafeAreaView, View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
 const Tab = createBottomTabNavigator();
-const STORAGE_KEY = '@mindforge_progress_v1';
-
-const COLORS = {
-  bg: '#0B0D12', card: '#151922', cardAlt: '#1C2130', text: '#F4F7FB',
-  muted: '#9AA4B2', accent: '#8B5CF6', accentSoft: '#251A45',
-  success: '#34D399', danger: '#FB7185', border: '#272D3A',
-};
+const STORAGE_KEY = '@mindforge_progress_v2';
+const C = { bg:'#0B0D12', card:'#151922', alt:'#1C2130', text:'#F4F7FB', muted:'#9AA4B2', accent:'#8B5CF6', soft:'#251A45', green:'#34D399', red:'#FB7185', border:'#272D3A' };
 
 const puzzles = [
-  {
-    question: 'You have 8 identical-looking balls. Exactly one is heavier. With a balance scale, what is the best first move?',
-    options: ['Weigh 1 against 1.', 'Weigh 3 against 3.', 'Weigh 4 against 4.', 'Guess the heaviest-looking ball.'],
-    answer: 1,
-    explanation: 'Three versus three gives you the most useful information from the first weighing and leaves a smaller set of possibilities to investigate.',
-  },
-  {
-    question: 'A machine has three buttons. One turns on a light, one turns on a fan, and one does nothing. You are told the light is already on. What should you focus on first?',
-    options: ['Assume the first button is broken.', 'Separate what is known from what is merely assumed.', 'Assume the fan button is second.', 'Ignore the information.'],
-    answer: 1,
-    explanation: 'First-principles reasoning starts with facts. The light already being on is a fact; the button mapping is not enough information to guess without evidence.',
-  },
+ {q:'You have 8 identical balls. Exactly one is heavier. With a balance scale, what is the best first move?',o:['1 vs 1','3 vs 3','4 vs 4','Guess'],a:1,e:'Three versus three gives the most useful information and leaves a smaller set of possibilities.'},
+ {q:'You are told a light is already on. What should first-principles reasoning focus on?',o:['Assumptions','Known facts','Guessing','Ignoring the clue'],a:1,e:'Start with facts you can defend, then separate them from assumptions before drawing conclusions.'}
 ];
-
-const thoughtExperiments = [
-  {
-    title: 'The Elevator',
-    prompt: 'Imagine a sealed elevator in deep space accelerating upward at 9.8 m/s². You drop a ball. How would it appear to behave?',
-    options: ['It floats beside you.', 'It falls toward the floor as if gravity were present.', 'It moves to the ceiling.', 'It moves sideways.'],
-    answer: 1,
-    explanation: 'Inside the accelerating elevator, the ball can appear to fall toward the floor. Einstein used this kind of thought experiment to explore the equivalence of acceleration and gravity.',
-    takeaway: 'Change the situation, then ask what remains observable.',
-  },
-  {
-    title: 'Chasing Light',
-    prompt: 'Imagine traveling extremely close to the speed of light and trying to chase a light beam. What happens to the measured speed of light in vacuum?',
-    options: ['It becomes stationary.', 'It is still measured at the speed of light.', 'It reverses direction.', 'It disappears.'],
-    answer: 1,
-    explanation: 'Special relativity says every inertial observer measures light in vacuum at the same speed. The thought experiment exposes the limits of everyday intuition about adding velocities.',
-    takeaway: 'When intuition conflicts with a principle, test the principle.',
-  },
-  {
-    title: 'The Twin Journey',
-    prompt: 'Two twins separate. One travels at a very high speed and returns. What can happen under special relativity?',
-    options: ['They must age identically.', 'The traveling twin can age less.', 'Time stops on Earth.', 'The traveler never ages.'],
-    answer: 1,
-    explanation: 'Different paths through spacetime can contain different amounts of elapsed proper time. This is the idea behind the famous twin scenario.',
-    takeaway: 'Compare paths instead of assuming every observer experiences time identically.',
-  },
-];
-
-const visualChallenges = [
-  {
-    title: 'Build Before You Build',
-    prompt: 'You want to design a desk lamp. Which approach best represents visual prototyping?',
-    options: ['Buy parts immediately.', 'Mentally rotate and test the design before construction.', 'Copy a design without testing it.', 'Only use trial and error.'],
-    answer: 1,
-    explanation: 'A mental model lets you inspect movement, relationships, and possible failures before spending time or materials on a physical prototype.',
-    takeaway: 'See the system in your mind before you build it.',
-  },
-  {
-    title: 'Find the Failure Point',
-    prompt: 'You visualize a bridge and notice one connection carries most of the load. What should you do?',
-    options: ['Ignore it.', 'Stress-test that connection and redesign the weak point.', 'Add random parts.', 'Start over without analysis.'],
-    answer: 1,
-    explanation: 'Visualization is useful when it helps reveal constraints and weak points. Test the highest-risk part instead of adding complexity blindly.',
-    takeaway: 'Use visualization to find failure points early.',
-  },
-  {
-    title: 'Simplify the Machine',
-    prompt: 'An imagined machine needs 12 moving parts for one simple action. What is the strongest next step?',
-    options: ['Add 12 more parts.', 'Remove every part that is not necessary.', 'Make every part more complex.', 'Stop testing.'],
-    answer: 1,
-    explanation: 'A strong mental prototype should expose unnecessary complexity. Simplifying the mechanism can make the eventual physical design more reliable.',
-    takeaway: 'Make complexity visible—and removable.',
-  },
-];
-
-const languageLessons = {
-  Spanish: [
-    ['hello', 'hola'], ['goodbye', 'adiós'], ['please', 'por favor'], ['thanks', 'gracias'], ['yes', 'sí'],
-    ['no', 'no'], ['water', 'agua'], ['food', 'comida'], ['house', 'casa'], ['friend', 'amigo'],
-  ],
-  French: [
-    ['hello', 'bonjour'], ['goodbye', 'au revoir'], ['please', "s'il vous plaît"], ['thanks', 'merci'], ['yes', 'oui'],
-    ['no', 'non'], ['water', 'eau'], ['food', 'nourriture'], ['house', 'maison'], ['friend', 'ami'],
-  ],
-  Algebra: [
-    ['unknown value', 'variable'], ['fixed number', 'constant'], ['mathematical sentence with =', 'equation'], ['value that makes an equation true', 'solution'], ['number multiplying a variable', 'coefficient'],
-    ['expression with one or more terms', 'polynomial'], ['expression with two terms', 'binomial'], ['expression with three terms', 'trinomial'], ['operation that undoes multiplication', 'division'], ['operation that undoes addition', 'subtraction'],
-  ],
+const mindsets = {
+ Einstein:[
+  {t:'The Elevator',q:'A sealed elevator in deep space accelerates upward at 9.8 m/s². You drop a ball. How does it appear to behave?',o:['Float','Fall toward the floor','Move to ceiling','Move sideways'],a:1,e:'Inside an accelerating elevator, the ball can appear to fall toward the floor, illustrating the equivalence idea.',k:'Change the situation, then ask what remains observable.'},
+  {t:'Chasing Light',q:'If you travel extremely close to light speed and chase a light beam, what speed do you measure for light in vacuum?',o:['Zero','The speed of light','Half the speed','It disappears'],a:1,e:'Special relativity says inertial observers measure light in vacuum at the same speed.',k:'When intuition conflicts with a principle, test the principle.'},
+  {t:'Twin Journey',q:'One twin travels at very high speed and returns. What can happen?',o:['They must age identically','The traveling twin can age less','Time stops on Earth','The traveler never ages'],a:1,e:'Different paths through spacetime can contain different amounts of elapsed proper time.',k:'Compare paths instead of assuming every observer experiences time identically.'}
+ ],
+ Tesla:[
+  {t:'Build Before You Build',q:'You want to design a desk lamp. Which approach best represents visual prototyping?',o:['Buy parts immediately','Mentally rotate and test it first','Copy a design blindly','Only use trial and error'],a:1,e:'A mental model lets you test movement and possible failures before spending materials.',k:'See the system in your mind before you build it.'},
+  {t:'Find the Failure Point',q:'A visualized bridge has one connection carrying most of the load. What should you do?',o:['Ignore it','Stress-test and redesign it','Add random parts','Start over blindly'],a:1,e:'Visualization is useful when it reveals constraints and weak points. Test the highest-risk part first.',k:'Use visualization to find failure points early.'},
+  {t:'Simplify the Machine',q:'A machine needs 12 moving parts for one simple action. What is the strongest next step?',o:['Add more parts','Remove unnecessary parts','Make it more complex','Stop testing'],a:1,e:'A strong mental prototype exposes unnecessary complexity so the eventual design can be simpler.',k:'Make complexity visible—and removable.'}
+ ]
 };
+const languages = {
+ Spanish:[['hello','hola'],['goodbye','adiós'],['please','por favor'],['thanks','gracias'],['yes','sí'],['no','no'],['water','agua'],['food','comida'],['house','casa'],['friend','amigo']],
+ French:[['hello','bonjour'],['goodbye','au revoir'],['please',"s'il vous plaît"],['thanks','merci'],['yes','oui'],['no','non'],['water','eau'],['food','nourriture'],['house','maison'],['friend','ami']],
+ Algebra:[['unknown value','variable'],['fixed number','constant'],['math sentence with =','equation'],['value that makes equation true','solution'],['number multiplying a variable','coefficient'],['expression with terms','polynomial'],['two-term expression','binomial'],['three-term expression','trinomial'],['undoes multiplication','division'],['undoes addition','subtraction']]
+};
+const initial = { completed:[], languageIndex:{Spanish:0,French:0,Algebra:0}, languageScores:{Spanish:0,French:0,Algebra:0} };
 
-const initialProgress = { completedModules: [], languageIndex: { Spanish: 0, French: 0, Algebra: 0 } };
+async function readProgress(){ try { const raw=await AsyncStorage.getItem(STORAGE_KEY); if(!raw)return initial; const p=JSON.parse(raw); return {...initial,...p,languageIndex:{...initial.languageIndex,...(p.languageIndex||{})},languageScores:{...initial.languageScores,...(p.languageScores||{})}}; } catch(e){ return initial; } }
+async function writeProgress(p){ try{await AsyncStorage.setItem(STORAGE_KEY,JSON.stringify(p));}catch(e){} }
 
-async function loadProgress() {
-  try {
-    const saved = await AsyncStorage.getItem(STORAGE_KEY);
-    return saved ? { ...initialProgress, ...JSON.parse(saved) } : initialProgress;
-  } catch (error) {
-    return initialProgress;
-  }
-}
+function Row({n,title,sub,done}){return <View style={s.row}><View style={s.num}><Text style={s.numText}>{n}</Text></View><View style={{flex:1}}><Text style={s.cardTitle}>{title}</Text><Text style={s.cardBody}>{sub}</Text></View><Text style={done?s.check:s.pending}>{done?'✓':'○'}</Text></View>}
 
-async function saveProgress(progress) {
-  try {
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
-  } catch (error) {
-    // Local progress is best-effort; the app remains usable if storage fails.
-  }
-}
+function Home({navigation,progress}){return <SafeAreaView style={s.safe}><ScrollView contentContainerStyle={s.container}><Text style={s.eyebrow}>MINDFORGE</Text><Text style={s.hero}>Train your mind to think deeper.</Text><Text style={s.subtitle}>Interactive lessons for reasoning, creativity, and languages.</Text><View style={s.feature}><Text style={s.kicker}>PROGRESS</Text><Text style={s.cardTitle}>{progress.completed.length}/3 mindset modules completed</Text><Text style={s.cardBody}>Your progress is saved locally on this device.</Text><Pressable style={s.primary} onPress={()=>navigation.navigate('Learn')}><Text style={s.primaryText}>Continue learning →</Text></Pressable></View><Text style={s.section}>Mindset roadmap</Text><Row n="01" title="First Principles" sub="Thinking like Newton" done={progress.completed.includes('module1')}/><Row n="02" title="Thought Experiments" sub="Thinking like Einstein" done={progress.completed.includes('module2')}/><Row n="03" title="Visual Prototyping" sub="Thinking like Tesla" done={progress.completed.includes('module3')}/></ScrollView></SafeAreaView>}
 
-function HomeScreen({ navigation, progress }) {
-  const completed = progress.completedModules.length;
-  return (
-    <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.eyebrow}>MINDFORGE</Text>
-        <Text style={styles.hero}>Train your mind to think deeper.</Text>
-        <Text style={styles.subtitle}>Short interactive lessons for reasoning, creativity, and languages.</Text>
-        <View style={styles.featureCard}>
-          <Text style={styles.cardKicker}>YOUR PROGRESS</Text>
-          <Text style={styles.cardTitle}>{completed}/3 mindset modules completed</Text>
-          <Text style={styles.cardBody}>Progress is saved locally on this device.</Text>
-          <Pressable style={styles.primaryButton} onPress={() => navigation.navigate('Learn')}>
-            <Text style={styles.primaryButtonText}>Continue learning →</Text>
-          </Pressable>
-        </View>
-        <Text style={styles.sectionTitle}>Mindset roadmap</Text>
-        <ModuleRow number="01" title="First Principles" subtitle="Thinking like Newton" complete={progress.completedModules.includes('module1')} />
-        <ModuleRow number="02" title="Thought Experiments" subtitle="Thinking like Einstein" complete={progress.completedModules.includes('module2')} />
-        <ModuleRow number="03" title="Visual Prototyping" subtitle="Thinking like Tesla" complete={progress.completedModules.includes('module3')} />
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
+function Learn({progress,setProgress}){const [i,setI]=useState(0),[sel,setSel]=useState(null),[shown,setShown]=useState(false);const p=puzzles[i];const done=progress.completed.includes('module1');const choose=x=>{if(!shown){setSel(x);setShown(true)}};const next=async()=>{let np=progress;if(i===puzzles.length-1&&!done){np={...progress,completed:[...progress.completed,'module1']};setProgress(np);await writeProgress(np)}setI((i+1)%puzzles.length);setSel(null);setShown(false)};return <SafeAreaView style={s.safe}><ScrollView contentContainerStyle={s.container}><Text style={s.eyebrow}>MODULE 01 {done?'✓':''}</Text><Text style={s.heroSmall}>First Principles</Text><Text style={s.subtitle}>Thinking like Newton</Text><View style={s.lesson}><Text style={s.lessonTitle}>Start with what is true.</Text><Text style={s.lessonText}>Reduce a problem to facts, separate assumptions from evidence, and rebuild the answer from those facts.</Text><View style={s.rule}><Text style={s.ruleTitle}>Newton rule</Text><Text style={s.ruleText}>Facts → assumptions → logic → conclusion</Text></View></View><Quiz p={p} sel={sel} shown={shown} choose={choose}/>{shown&&<View style={s.feedback}><Text style={s.feedbackTitle}>{sel===p.a?'✓ Correct':'Not quite — inspect the facts.'}</Text><Text style={s.feedbackText}>{p.e}</Text><Pressable style={s.secondary} onPress={next}><Text style={s.secondaryText}>{i===puzzles.length-1?'Complete module →':'Next challenge →'}</Text></Pressable></View>}{done&&<View style={s.banner}><Text style={s.bannerText}>✓ Module 1 complete — saved locally</Text></View>}</ScrollView></SafeAreaView>}
 
-function ModuleRow({ number, title, subtitle, complete }) {
-  return (
-    <View style={styles.moduleRow}>
-      <View style={styles.moduleNumber}><Text style={styles.moduleNumberText}>{number}</Text></View>
-      <View style={styles.moduleRowText}><Text style={styles.cardTitle}>{title}</Text><Text style={styles.cardBody}>{subtitle}</Text></View>
-      {complete ? <Text style={styles.checkmark}>✓</Text> : <Text style={styles.lockDot}>○</Text>}
-    </View>
-  );
-}
+function Quiz({p,sel,shown,choose}){return <View style={s.quiz}><Text style={s.kicker}>CHALLENGE</Text><Text style={s.question}>{p.q}</Text>{p.o.map((x,j)=><Pressable key={x} onPress={()=>choose(j)} style={[s.option,sel===j&&s.selected,shown&&j===p.a&&s.correct,shown&&sel===j&&j!==p.a&&s.wrong]}><Text style={s.letter}>{String.fromCharCode(65+j)}</Text><Text style={s.optionText}>{x}</Text></Pressable>)}</View>}
 
-function LearnScreen({ progress, setProgress }) {
-  const [index, setIndex] = useState(0);
-  const [selected, setSelected] = useState(null);
-  const [showAnswer, setShowAnswer] = useState(false);
-  const puzzle = puzzles[index];
-  const completed = progress.completedModules.includes('module1');
+function Mindsets({progress,setProgress}){const [kind,setKind]=useState('Einstein'),[i,setI]=useState(0),[sel,setSel]=useState(null),[shown,setShown]=useState(false);const arr=mindsets[kind],m=arr[i],id=kind==='Einstein'?'module2':'module3',done=progress.completed.includes(id);const choose=x=>{if(!shown){setSel(x);setShown(true)}};const next=async()=>{let np=progress;if(i===arr.length-1&&!done){np={...progress,completed:[...progress.completed,id]};setProgress(np);await writeProgress(np)}setI((i+1)%arr.length);setSel(null);setShown(false)};const change=k=>{setKind(k);setI(0);setSel(null);setShown(false)};return <SafeAreaView style={s.safe}><ScrollView contentContainerStyle={s.container}><Text style={s.eyebrow}>MINDSETS</Text><Text style={s.heroSmall}>Think differently.</Text><Text style={s.subtitle}>Learn methods inspired by great thinkers.</Text><View style={s.switcher}>{['Einstein','Tesla'].map(k=><Pressable key={k} style={[s.chip,k===kind&&s.chipActive]} onPress={()=>change(k)}><Text style={[s.chipText,k===kind&&s.chipTextActive]}>{k}</Text></Pressable>)}</View><View style={s.lesson}><Text style={s.lessonNumber}>MODULE {kind==='Einstein'?'02':'03'} {done?'✓':''}</Text><Text style={s.lessonTitle}>{kind==='Einstein'?'Thought Experiments':'Visual Prototyping'}</Text><Text style={s.subtitle}>{kind==='Einstein'?'Thinking like Einstein':'Thinking like Tesla'}</Text><Text style={s.lessonText}>{kind==='Einstein'?'Change the conditions of a problem to expose the principles underneath it.':'Build and test an idea in your mind before committing to physical materials.'}</Text><View style={s.rule}><Text style={s.ruleTitle}>{kind} method</Text><Text style={s.ruleText}>{kind==='Einstein'?'Imagine → change conditions → consequences → rethink':'Imagine → simulate → stress-test → simplify'}</Text></View></View><View style={s.quiz}><Text style={s.kicker}>{kind==='Tesla'?'VISUAL CHALLENGE':'THOUGHT EXPERIMENT'} {i+1}/{arr.length}</Text><Text style={s.challengeTitle}>{m.t}</Text><Text style={s.question}>{m.q}</Text>{m.o.map((x,j)=><Pressable key={x} onPress={()=>choose(j)} style={[s.option,sel===j&&s.selected,shown&&j===m.a&&s.correct,shown&&sel===j&&j!==m.a&&s.wrong]}><Text style={s.letter}>{String.fromCharCode(65+j)}</Text><Text style={s.optionText}>{x}</Text></Pressable>)}</View>{shown&&<View style={s.feedback}><Text style={s.feedbackTitle}>{sel===m.a?'✓ Correct':'Not quite — rethink the scenario.'}</Text><Text style={s.feedbackText}>{m.e}</Text><View style={s.takeaway}><Text style={s.kicker}>THINKING TAKEAWAY</Text><Text style={s.takeawayText}>{m.k}</Text></View><Pressable style={s.secondary} onPress={next}><Text style={s.secondaryText}>{i===arr.length-1?'Complete module →':'Next challenge →'}</Text></Pressable></View>}</ScrollView></SafeAreaView>}
 
-  const choose = (answer) => {
-    if (!showAnswer) { setSelected(answer); setShowAnswer(true); }
-  };
+function Languages({progress,setProgress}){const [lang,setLang]=useState('Spanish'),[i,setI]=useState(progress.languageIndex?.Spanish||0),[sel,setSel]=useState(null),[shown,setShown]=useState(false);const list=languages[lang],item=list[i];const change=l=>{setLang(l);setI(progress.languageIndex?.[l]||0);setSel(null);setShown(false)};const makeOptions=()=>{const pool=list.map(x=>x[1]).filter(x=>x!==item[1]);const mixed=[item[1],...pool];return mixed.sort(()=>Math.random()-.5).slice(0,4)};const [options,setOptions]=useState(makeOptions);useEffect(()=>{setOptions(makeOptions())},[lang,i]);const choose=x=>{if(!shown){setSel(x);setShown(true)}};const next=async()=>{const score=progress.languageScores?.[lang]||0;const ni=(i+1)%list.length;const np={...progress,languageIndex:{...progress.languageIndex,[lang]:ni},languageScores:{...progress.languageScores,[lang]:score+(sel===item[1]?1:0)}};setProgress(np);await writeProgress(np);setI(ni);setSel(null);setShown(false)};return <SafeAreaView style={s.safe}><ScrollView contentContainerStyle={s.container}><Text style={s.eyebrow}>LANGUAGE LAB</Text><Text style={s.heroSmall}>Learn by recall.</Text><Text style={s.subtitle}>10 basics in Spanish, French, and Algebra.</Text><View style={s.switcher}>{Object.keys(languages).map(l=><Pressable key={l} style={[s.chip,lang===l&&s.chipActive]} onPress={()=>change(l)}><Text style={[s.chipText,lang===l&&s.chipTextActive]}>{l}</Text></Pressable>)}</View><View style={s.lesson}><Text style={s.lessonNumber}>LESSON {i+1}/10</Text><Text style={s.lessonTitle}>{item[0]}</Text><Text style={s.lessonText}>Correct answer: <Text style={{color:C.text,fontWeight:'800'}}>{item[1]}</Text></Text></View><View style={s.quiz}><Text style={s.kicker}>QUIZ</Text><Text style={s.question}>Which answer matches “{item[0]}”?</Text>{options.map(x=><Pressable key={x} onPress={()=>choose(x)} style={[s.option,sel===x&&s.selected,shown&&x===item[1]&&s.correct,shown&&sel===x&&x!==item[1]&&s.wrong]}><Text style={s.optionText}>{x}</Text></Pressable>)}</View>{shown&&<View style={s.feedback}><Text style={s.feedbackTitle}>{sel===item[1]?'✓ Correct':'Keep practicing'}</Text><Text style={s.feedbackText}>The answer is “{item[1]}”. Recall it once more before moving on.</Text><Pressable style={s.secondary} onPress={next}><Text style={s.secondaryText}>{i===9?'Restart 10-word cycle →':'Next word →'}</Text></Pressable></View>}<View style={s.banner}><Text style={s.bannerText}>Score: {progress.languageScores?.[lang]||0}/10 · Position: {i+1}/10</Text></View></ScrollView></SafeAreaView>}
 
-  const next = async () => {
-    if (index === puzzles.length - 1 && !completed) {
-      const nextProgress = { ...progress, completedModules: [...progress.completedModules, 'module1'] };
-      setProgress(nextProgress);
-      await saveProgress(nextProgress);
-    }
-    setIndex((i) => (i + 1) % puzzles.length);
-    setSelected(null);
-    setShowAnswer(false);
-  };
+function Profile({progress}){return <SafeAreaView style={s.safe}><ScrollView contentContainerStyle={s.container}><Text style={s.eyebrow}>PROFILE</Text><Text style={s.heroSmall}>Your progress.</Text><View style={s.profile}><View style={s.avatar}><Text style={s.avatarText}>M</Text></View><Text style={s.cardTitle}>MindForge Learner</Text><Text style={s.cardBody}>Progress stored locally with AsyncStorage.</Text></View><View style={s.feature}><Text style={s.kicker}>MINDSETS COMPLETED</Text><Text style={s.big}>{progress.completed.length}/3</Text><Text style={s.cardBody}>Complete each module to earn its green checkmark.</Text></View></ScrollView></SafeAreaView>}
 
-  return (
-    <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.eyebrow}>MODULE 01 {completed ? '✓' : ''}</Text>
-        <Text style={styles.heroSmall}>First Principles</Text>
-        <Text style={styles.subtitle}>Thinking like Newton</Text>
-        <View style={styles.lessonCard}>
-          <Text style={styles.lessonNumber}>BREAK THE PROBLEM DOWN</Text>
-          <Text style={styles.lessonTitle}>Start with what is true.</Text>
-          <Text style={styles.lessonText}>Reduce a problem to basic facts, separate assumptions from evidence, and rebuild the answer from those facts.</Text>
-          <View style={styles.ruleBox}><Text style={styles.ruleTitle}>The Newton rule</Text><Text style={styles.ruleText}>Facts → assumptions → logic → conclusion</Text></View>
-        </View>
-        <View style={styles.puzzleCard}>
-          <Text style={styles.puzzleKicker}>LOGIC PUZZLE {index + 1}/{puzzles.length}</Text>
-          <Text style={styles.question}>{puzzle.question}</Text>
-          {puzzle.options.map((option, i) => (
-            <Pressable key={option} onPress={() => choose(i)} style={[styles.option, selected === i && styles.optionSelected, showAnswer && i === puzzle.answer && styles.optionCorrect, showAnswer && selected === i && i !== puzzle.answer && styles.optionWrong]}>
-              <Text style={styles.optionLetter}>{String.fromCharCode(65 + i)}</Text><Text style={styles.optionText}>{option}</Text>
-            </Pressable>
-          ))}
-          {showAnswer && <View style={styles.feedback}>
-            <Text style={styles.feedbackTitle}>{selected === puzzle.answer ? '✓ Correct' : 'Not quite — inspect the facts.'}</Text>
-            <Text style={styles.feedbackText}>{puzzle.explanation}</Text>
-            <Pressable style={styles.secondaryButton} onPress={next}><Text style={styles.secondaryButtonText}>{index === puzzles.length - 1 ? 'Complete module →' : 'Next challenge →'}</Text></Pressable>
-          </View>}
-        </View>
-        {completed && <View style={styles.completedBanner}><Text style={styles.completedText}>✓ Module 1 complete — saved on this device</Text></View>}
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
+export default function App(){const [progress,setProgress]=useState(initial);useEffect(()=>{readProgress().then(setProgress)},[]);return <NavigationContainer><Tab.Navigator screenOptions={{headerShown:false,tabBarStyle:s.tabBar,tabBarActiveTintColor:C.text,tabBarInactiveTintColor:C.muted,tabBarLabelStyle:s.tabLabel}}><Tab.Screen name="Home">{p=><Home {...p} progress={progress}/>}</Tab.Screen><Tab.Screen name="Learn">{p=><Learn {...p} progress={progress} setProgress={setProgress}/>}</Tab.Screen><Tab.Screen name="Mindsets">{p=><Mindsets {...p} progress={progress} setProgress={setProgress}/>}</Tab.Screen><Tab.Screen name="Languages">{p=><Languages {...p} progress={progress} setProgress={setProgress}/>}</Tab.Screen><Tab.Screen name="Profile">{p=><Profile {...p} progress={progress}/>}</Tab.Screen></Tab.Navigator></NavigationContainer>}
 
-function MindsetsScreen({ progress, setProgress }) {
-  const [module, setModule] = useState('einstein');
-  const [index, setIndex] = useState(0);
-  const [selected, setSelected] = useState(null);
-  const [showAnswer, setShowAnswer] = useState(false);
-  const isTesla = module === 'tesla';
-  const challenges = isTesla ? visualChallenges : thoughtExperiments;
-  const challenge = challenges[index];
-  const moduleId = isTesla ? 'module3' : 'module2';
-  const complete = progress.completedModules.includes(moduleId);
-
-  const choose = (answer) => { if (!showAnswer) { setSelected(answer); setShowAnswer(true); } };
-  const next = async () => {
-    if (index === challenges.length - 1 && !complete) {
-      const nextProgress = { ...progress, completedModules: [...progress.completedModules, moduleId] };
-      setProgress(nextProgress);
-      await saveProgress(nextProgress);
-    }
-    setIndex((i) => (i + 1) % challenges.length);
-    setSelected(null);
-    setShowAnswer(false);
-  };
-  const switchModule = (nextModule) => { setModule(nextModule); setIndex(0); setSelected(null); setShowAnswer(false); };
-
-  return (
-    <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.eyebrow}>MINDSETS</Text>
-        <Text style={styles.heroSmall}>Think differently.</Text>
-        <Text style={styles.subtitle}>Learn methods inspired by great thinkers.</Text>
-        <View style={styles.moduleSwitcher}>
-          <Pressable style={[styles.moduleChip, !isTesla && styles.moduleChipActive]} onPress={() => switchModule('einstein')}><Text style={[styles.moduleChipText, !isTesla && styles.moduleChipTextActive]}>02 · Einstein</Text></Pressable>
-          <Pressable style={[styles.moduleChip, isTesla && styles.moduleChipActive]} onPress={() => switchModule('tesla')}><Text style={[styles.moduleChipText, isTesla && styles.moduleChipTextActive]}>03 · Tesla</Text></Pressable>
-        </View>
-        <View style={styles.lessonCard}>
-          <Text style={styles.lessonNumber}>MODULE {isTesla ? '03' : '02'} {complete ? '✓' : ''}</Text>
-          <Text style={styles.lessonTitle}>{isTesla ? 'Visual Prototyping' : 'Thought Experiments'}</Text>
-          <Text style={styles.subtitle}>{isTesla ? 'Thinking like Tesla' : 'Thinking like Einstein'}</Text>
-          <Text style={styles.lessonText}>{isTesla ? 'Build and test an idea in your mind before committing to physical materials. Picture movement, find weak points, then simplify.' : 'Change the conditions of a problem to expose the principles underneath it. Imagine clearly, then follow the consequences.'}</Text>
-          <View style={styles.ruleBox}><Text style={styles.ruleTitle}>{isTesla ? 'The Tesla method' : 'The Einstein method'}</Text><Text style={styles.ruleText}>{isTesla ? 'Imagine → simulate → stress-test → simplify' : 'Imagine → change conditions → consequences → rethink'}</Text></View>
-        </View>
-        <View style={styles.puzzleCard}>
-          <Text style={styles.puzzleKicker}>{isTesla ? 'VISUAL CHALLENGE' : 'THOUGHT EXPERIMENT'} {index + 1}/{challenges.length}</Text>
-          <Text style={styles.challengeTitle}>{challenge.title}</Text><Text style={styles.question}>{challenge.prompt}</Text>
-          {challenge.options.map((option, i) => (
-            <Pressable key={option} onPress={() => choose(i)} style={[styles.option, selected === i && styles.optionSelected, showAnswer && i === challenge.answer && styles.optionCorrect, showAnswer && selected === i && i !== challenge.answer && styles.optionWrong]}>
-              <Text style={styles.optionLetter}>{String.fromCharCode(65 + i)}</Text><Text style={styles.optionText}>{option}</Text>
-            </Pressable>
-          ))}
-          {showAnswer && <View style={styles.feedback}><Text style={styles.feedbackTitle}>{selected === challenge.answer ? '✓ Correct' : 'Not quite — rethink the scenario.'}</Text><Text style={styles.feedbackText}>{challenge.explanation}</Text><View style={styles.takeawayBox}><Text style={styles.takeawayLabel}>THINKING TAKEAWAY</Text><Text style={styles.takeawayText}>{challenge.takeaway}</Text></View><Pressable style={styles.secondaryButton} onPress={next}><Text style={styles.secondaryButtonText}>{index === challenges.length - 1 ? 'Complete module →' : 'Next challenge →'}</Text></Pressable></View>}
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
-
-function LanguagesScreen({ progress, setProgress }) {
-  const [language, setLanguage] = useState('Spanish');
-  const [index, setIndex] = useState(progress.languageIndex?.Spanish || 0);
-  const [selected, setSelected] = useState(null);
-  const [showAnswer, setShowAnswer] = useState(false);
-  const words = languageLessons[language];
-  const current = words[index];
-  const quizOptions = [current[1], ...words.filter((_, i) => i !== index).slice(0, 3).map((item) => item[1])];
-
-  const changeLanguage = (nextLanguage) => {
-    setLanguage(nextLanguage); setIndex(progress.languageIndex?.[nextLanguage] || 0); setSelected(null); setShowAnswer(false);
-  };
-  const choose = (answer) => { if (!showAnswer) { setSelected(answer); setShowAnswer(true); } };
-  const next = async () => {
-    const nextIndex = (index + 1) % words.length;
-    const languageIndex = { ...(progress.languageIndex || initialProgress.languageIndex), [language]: nextIndex };
-    const nextProgress = { ...progress, languageIndex };
-    setProgress(nextProgress); await saveProgress(nextProgress);
-    setIndex(nextIndex); setSelected(null); setShowAnswer(false);
-  };
-
-  return (
-    <SafeAreaView style={styles.safe}><ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.eyebrow}>LANGUAGE LAB</Text><Text style={styles.heroSmall}>Learn by recall.</Text><Text style={styles.subtitle}>10 beginner words or concepts in each track.</Text>
-      <View style={styles.moduleSwitcher}>
-        {Object.keys(languageLessons).map((item) => <Pressable key={item} style={[styles.moduleChip, language === item && styles.moduleChipActive]} onPress={() => changeLanguage(item)}><Text style={[styles.moduleChipText, language === item && styles.moduleChipTextActive]}>{item}</Text></Pressable>)}
-      </View>
-      <View style={styles.lessonCard}><Text style={styles.lessonNumber}>LESSON {index + 1} / 10</Text><Text style={styles.lessonTitle}>{current[0]}</Text><Text style={styles.lessonText}>What is the {language === 'Algebra' ? 'math term' : language + ' word'}?</Text></View>
-      <View style={styles.puzzleCard}>{quizOptions.map((option) => <Pressable key={option} onPress={() => choose(option)} style={[styles.option, selected === option && styles.optionSelected, showAnswer && option === current[1] && styles.optionCorrect, showAnswer && selected === option && option !== current[1] && styles.optionWrong]}><Text style={styles.optionText}>{option}</Text></Pressable>)}{showAnswer && <View style={styles.feedback}><Text style={styles.feedbackTitle}>{selected === current[1] ? '✓ Correct' : 'Not quite'}</Text><Text style={styles.feedbackText}>Answer: {current[1]}</Text><Pressable style={styles.secondaryButton} onPress={next}><Text style={styles.secondaryButtonText}>Next lesson →</Text></Pressable></View>}</View>
-    </ScrollView></SafeAreaView>
-  );
-}
-
-function ProfileScreen({ progress }) {
-  return <SafeAreaView style={styles.safe}><ScrollView contentContainerStyle={styles.container}><Text style={styles.eyebrow}>PROFILE</Text><Text style={styles.heroSmall}>Your progress.</Text><View style={styles.profileCard}><View style={styles.avatar}><Text style={styles.avatarText}>M</Text></View><Text style={styles.cardTitle}>MindForge Learner</Text><Text style={styles.cardBody}>{progress.completedModules.length} mindset modules completed</Text></View><View style={styles.progressCard}><Text style={styles.cardKicker}>LOCAL SAVE</Text><Text style={styles.progressText}>✓ Your progress is stored locally with AsyncStorage.</Text><Text style={styles.cardBody}>Closing and reopening the app will keep completed modules and language lesson position on this device.</Text></View></ScrollView></SafeAreaView>;
-}
-
-export default function App() {
-  const [progress, setProgress] = useState(initialProgress);
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => { loadProgress().then((saved) => { setProgress(saved); setReady(true); }); }, []);
-
-  if (!ready) return <SafeAreaView style={styles.safe}><View style={styles.loading}><Text style={styles.loadingText}>Loading your forge…</Text></View></SafeAreaView>;
-
-  return <NavigationContainer><Tab.Navigator screenOptions={{ headerShown: false, tabBarStyle: styles.tabBar, tabBarActiveTintColor: COLORS.text, tabBarInactiveTintColor: COLORS.muted, tabBarLabelStyle: styles.tabLabel }}>
-    <Tab.Screen name="Home">{(props) => <HomeScreen {...props} progress={progress} />}</Tab.Screen>
-    <Tab.Screen name="Learn">{(props) => <LearnScreen {...props} progress={progress} setProgress={setProgress} />}</Tab.Screen>
-    <Tab.Screen name="Mindsets">{(props) => <MindsetsScreen {...props} progress={progress} setProgress={setProgress} />}</Tab.Screen>
-    <Tab.Screen name="Languages">{(props) => <LanguagesScreen {...props} progress={progress} setProgress={setProgress} />}</Tab.Screen>
-    <Tab.Screen name="Profile">{(props) => <ProfileScreen {...props} progress={progress} />}</Tab.Screen>
-  </Tab.Navigator></NavigationContainer>;
-}
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.bg }, container: { padding: 24, paddingBottom: 120 },
-  loading: { flex: 1, alignItems: 'center', justifyContent: 'center' }, loadingText: { color: COLORS.muted, fontSize: 16 },
-  eyebrow: { color: COLORS.accent, fontSize: 12, fontWeight: '800', letterSpacing: 2, marginBottom: 10 },
-  hero: { color: COLORS.text, fontSize: 38, lineHeight: 44, fontWeight: '800', marginBottom: 12 }, heroSmall: { color: COLORS.text, fontSize: 32, lineHeight: 38, fontWeight: '800' },
-  subtitle: { color: COLORS.muted, fontSize: 16, lineHeight: 24, marginBottom: 20 },
-  featureCard: { backgroundColor: COLORS.card, borderRadius: 24, padding: 22, borderWidth: 1, borderColor: COLORS.border, marginBottom: 28 },
-  cardKicker: { color: COLORS.muted, fontSize: 11, fontWeight: '800', letterSpacing: 1.5, marginBottom: 8 }, cardTitle: { color: COLORS.text, fontSize: 19, fontWeight: '800', marginBottom: 5 }, cardBody: { color: COLORS.muted, fontSize: 14, lineHeight: 21 },
-  primaryButton: { backgroundColor: COLORS.accent, borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginTop: 20 }, primaryButtonText: { color: '#FFF', fontWeight: '800', fontSize: 15 },
-  sectionTitle: { color: COLORS.text, fontSize: 21, fontWeight: '800', marginBottom: 12 },
-  moduleRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.card, borderRadius: 18, padding: 15, borderWidth: 1, borderColor: COLORS.border, marginBottom: 10 }, moduleNumber: { width: 42, height: 42, borderRadius: 14, backgroundColor: COLORS.accentSoft, alignItems: 'center', justifyContent: 'center', marginRight: 13 }, moduleNumberText: { color: '#C4B5FD', fontWeight: '900' }, moduleRowText: { flex: 1 }, checkmark: { color: COLORS.success, fontSize: 25, fontWeight: '900' }, lockDot: { color: COLORS.muted, fontSize: 22 },
-  lessonCard: { backgroundColor: COLORS.card, borderRadius: 22, padding: 20, borderWidth: 1, borderColor: COLORS.border, marginBottom: 18 }, lessonNumber: { color: COLORS.accent, fontSize: 11, fontWeight: '800', letterSpacing: 1.2, marginBottom: 9 }, lessonTitle: { color: COLORS.text, fontSize: 24, fontWeight: '800', marginBottom: 10 }, lessonText: { color: COLORS.muted, fontSize: 15, lineHeight: 23 },
-  ruleBox: { backgroundColor: COLORS.accentSoft, borderRadius: 16, padding: 16, marginTop: 18 }, ruleTitle: { color: COLORS.text, fontWeight: '800', marginBottom: 5 }, ruleText: { color: '#C4B5FD', fontSize: 14 },
-  puzzleCard: { backgroundColor: COLORS.card, borderRadius: 22, padding: 20, borderWidth: 1, borderColor: COLORS.border }, puzzleKicker: { color: COLORS.muted, fontSize: 11, fontWeight: '800', letterSpacing: 1.2, marginBottom: 12 }, challengeTitle: { color: COLORS.text, fontSize: 23, fontWeight: '800', marginBottom: 10 }, question: { color: COLORS.text, fontSize: 17, lineHeight: 25, fontWeight: '650', marginBottom: 15 },
-  option: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.cardAlt, borderRadius: 14, padding: 13, marginBottom: 10 }, optionSelected: { borderColor: COLORS.accent }, optionCorrect: { borderColor: COLORS.success }, optionWrong: { borderColor: COLORS.danger }, optionLetter: { color: COLORS.accent, fontWeight: '900', width: 28 }, optionText: { color: COLORS.text, flex: 1, fontSize: 14, lineHeight: 20 },
-  feedback: { marginTop: 8, paddingTop: 16, borderTopWidth: 1, borderTopColor: COLORS.border }, feedbackTitle: { color: COLORS.text, fontSize: 16, fontWeight: '800', marginBottom: 7 }, feedbackText: { color: COLORS.muted, fontSize: 14, lineHeight: 21 }, secondaryButton: { borderWidth: 1, borderColor: COLORS.accent, borderRadius: 13, paddingVertical: 13, alignItems: 'center', marginTop: 16 }, secondaryButtonText: { color: '#C4B5FD', fontWeight: '800' },
-  completedBanner: { backgroundColor: '#0E2A20', borderWidth: 1, borderColor: COLORS.success, borderRadius: 16, padding: 15, marginTop: 18 }, completedText: { color: COLORS.success, fontWeight: '800' }, takeawayBox: { backgroundColor: COLORS.accentSoft, borderRadius: 15, padding: 15, marginTop: 14 }, takeawayLabel: { color: '#C4B5FD', fontSize: 10, fontWeight: '900', letterSpacing: 1.3, marginBottom: 6 }, takeawayText: { color: COLORS.text, fontSize: 14, lineHeight: 21, fontWeight: '700' },
-  moduleSwitcher: { flexDirection: 'row', backgroundColor: COLORS.card, borderRadius: 16, padding: 5, borderWidth: 1, borderColor: COLORS.border, marginBottom: 18 }, moduleChip: { flex: 1, paddingVertical: 11, borderRadius: 12, alignItems: 'center' }, moduleChipActive: { backgroundColor: COLORS.accentSoft }, moduleChipText: { color: COLORS.muted, fontSize: 12, fontWeight: '800' }, moduleChipTextActive: { color: COLORS.text },
-  profileCard: { alignItems: 'center', backgroundColor: COLORS.card, borderRadius: 22, padding: 24, borderWidth: 1, borderColor: COLORS.border, marginBottom: 16 }, avatar: { width: 70, height: 70, borderRadius: 35, backgroundColor: COLORS.accentSoft, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }, avatarText: { color: '#C4B5FD', fontSize: 28, fontWeight: '900' }, progressCard: { backgroundColor: COLORS.card, borderRadius: 20, padding: 20, borderWidth: 1, borderColor: COLORS.border }, progressText: { color: COLORS.text, fontSize: 15, fontWeight: '700', marginBottom: 12 },
-  tabBar: { backgroundColor: '#11141B', borderTopColor: COLORS.border, height: 70, paddingBottom: 8, paddingTop: 8 }, tabLabel: { fontSize: 10, fontWeight: '700' },
-});
+const s=StyleSheet.create({safe:{flex:1,backgroundColor:C.bg},container:{padding:24,paddingBottom:110},eyebrow:{color:C.accent,fontSize:12,fontWeight:'900',letterSpacing:2,marginBottom:10},hero:{color:C.text,fontSize:38,lineHeight:44,fontWeight:'900',marginBottom:12},heroSmall:{color:C.text,fontSize:32,lineHeight:38,fontWeight:'900'},subtitle:{color:C.muted,fontSize:15,lineHeight:23,marginBottom:20},feature:{backgroundColor:C.card,borderRadius:22,padding:20,borderWidth:1,borderColor:C.border,marginBottom:24},kicker:{color:C.muted,fontSize:10,fontWeight:'900',letterSpacing:1.4,marginBottom:8},cardTitle:{color:C.text,fontSize:19,fontWeight:'800',marginBottom:4},cardBody:{color:C.muted,fontSize:13,lineHeight:20},primary:{backgroundColor:C.accent,borderRadius:13,padding:14,alignItems:'center',marginTop:18},primaryText:{color:'#fff',fontWeight:'900'},section:{color:C.text,fontSize:21,fontWeight:'900',marginBottom:12},row:{flexDirection:'row',alignItems:'center',backgroundColor:C.card,borderRadius:17,padding:15,borderWidth:1,borderColor:C.border,marginBottom:10},num:{width:40,height:40,borderRadius:12,backgroundColor:C.alt,alignItems:'center',justifyContent:'center',marginRight:12},numText:{color:C.accent,fontWeight:'900'},check:{color:C.green,fontSize:25,fontWeight:'900',paddingLeft:8},pending:{color:C.muted,fontSize:22,paddingLeft:8},lesson:{backgroundColor:C.card,borderRadius:21,padding:20,borderWidth:1,borderColor:C.border,marginBottom:17},lessonNumber:{color:C.accent,fontSize:10,fontWeight:'900',letterSpacing:1.2,marginBottom:8},lessonTitle:{color:C.text,fontSize:24,fontWeight:'900',marginBottom:8},lessonText:{color:C.muted,fontSize:14,lineHeight:22},rule:{backgroundColor:C.soft,borderRadius:14,padding:14,marginTop:15},ruleTitle:{color:C.text,fontWeight:'900',marginBottom:4},ruleText:{color:'#C4B5FD',fontSize:13},quiz:{backgroundColor:C.card,borderRadius:21,padding:20,borderWidth:1,borderColor:C.border},question:{color:C.text,fontSize:17,lineHeight:25,fontWeight:'700',marginBottom:14},challengeTitle:{color:C.text,fontSize:22,fontWeight:'900',marginBottom:9},option:{flexDirection:'row',alignItems:'center',backgroundColor:C.alt,borderRadius:13,borderWidth:1,borderColor:C.border,padding:13,marginBottom:9},selected:{borderColor:C.accent},correct:{borderColor:C.green},wrong:{borderColor:C.red},letter:{color:C.accent,fontWeight:'900',width:27},optionText:{color:C.text,flex:1,fontSize:14,lineHeight:20},feedback:{backgroundColor:C.card,borderRadius:18,padding:18,borderWidth:1,borderColor:C.border,marginTop:12},feedbackTitle:{color:C.text,fontWeight:'900',fontSize:16,marginBottom:7},feedbackText:{color:C.muted,fontSize:14,lineHeight:21},secondary:{borderColor:C.accent,borderWidth:1,borderRadius:12,padding:13,alignItems:'center',marginTop:15},secondaryText:{color:'#C4B5FD',fontWeight:'900'},banner:{backgroundColor:C.soft,borderRadius:14,padding:13,marginTop:14},bannerText:{color:'#C4B5FD',fontWeight:'800',fontSize:13},takeaway:{backgroundColor:C.soft,borderRadius:14,padding:14,marginTop:13},takeawayText:{color:C.text,fontWeight:'800',fontSize:14,lineHeight:20},switcher:{flexDirection:'row',backgroundColor:C.card,borderRadius:15,padding:5,borderWidth:1,borderColor:C.border,marginBottom:17},chip:{flex:1,paddingVertical:10,borderRadius:11,alignItems:'center'},chipActive:{backgroundColor:C.soft},chipText:{color:C.muted,fontSize:12,fontWeight:'800'},chipTextActive:{color:C.text},profile:{backgroundColor:C.card,borderRadius:21,padding:24,alignItems:'center',borderWidth:1,borderColor:C.border,marginBottom:15},avatar:{width:68,height:68,borderRadius:34,backgroundColor:C.soft,alignItems:'center',justifyContent:'center',marginBottom:12},avatarText:{color:'#C4B5FD',fontSize:28,fontWeight:'900'},big:{color:C.text,fontSize:34,fontWeight:'900',marginBottom:5},tabBar:{backgroundColor:'#11141B',borderTopColor:C.border,height:68,paddingTop:7,paddingBottom:7},tabLabel:{fontSize:10,fontWeight:'800'}});

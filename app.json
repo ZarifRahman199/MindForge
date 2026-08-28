@@ -1,0 +1,11 @@
+{
+  "expo": {
+    "name": "MindForge",
+    "slug": "mindforge",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "android": {
+      "package": "com.zarifrahman.mindforge"
+    }
+  }
+}

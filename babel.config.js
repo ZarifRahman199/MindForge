@@ -1,4 +1,7 @@
-const extraLanguages = require('./additionalLanguages');
+const extraLanguages = {
+  ...require('./additionalLanguages'),
+  ...require('./additionalLanguages2')
+};
 
 module.exports = function (api) {
   api.cache(false);
